@@ -185,6 +185,9 @@ class Model(object):
         if 'mqmqa' in phase.model_hints.keys():
             from pycalphad.models.model_mqmqa import ModelMQMQA
             target_cls = ModelMQMQA
+        if 'mqm' in phase.model_hints.keys():
+            from pycalphad.models.model_mqm import ModelMQM
+            target_cls = ModelMQM
         return target_cls
 
     def __getnewargs_ex__(self):
