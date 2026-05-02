@@ -16,6 +16,7 @@ from pycalphad.mapping.strategy.step_strategy import StepStrategy
 from pycalphad.mapping.strategy.binary_strategy import BinaryStrategy
 from pycalphad.mapping.strategy.ternary_strategy import TernaryStrategy
 from pycalphad.mapping.strategy.isopleth_strategy import IsoplethStrategy
+from pycalphad.mapping.strategy.pseudo_binary_strategy import PseudoBinaryStrategy
 import pycalphad.mapping.utils as map_utils
 
 def get_label(var: v.StateVariable):
@@ -349,5 +350,93 @@ def plot_isopleth(strategy: IsoplethStrategy, x: v.StateVariable = None, y: v.St
     ax.set_title(plot_title)
     ax.set_xlabel(get_label(x))
     ax.set_ylabel(get_label(y))
+
+    return ax
+
+
+def plot_pseudo_binary(
+    strategy: PseudoBinaryStrategy,
+    x: v.StateVariable = None,
+    y: v.StateVariable = None,
+    ax=None,
+    tielines: int = 1,
+    label_nodes: bool = False,
+    legend_generator=phase_legend,
+    tieline_color=(0, 1, 0, 1),
+    tie_triangle_color=(1, 0, 0, 1),
+    z_axis: bool = True,
+    z_label: str = None,
+    *args,
+    **kwargs,
+):
+    """
+    Plot a pseudo-binary phase diagram produced by
+    :class:`~pycalphad.mapping.strategy.pseudo_binary_strategy.PseudoBinaryStrategy`.
+
+    This is a thin wrapper around :func:`plot_binary` that optionally adds a
+    secondary x-axis showing the pseudo-binary parameter *z* (which is
+    proportional to the primary-element mole fraction).
+
+    Parameters
+    ----------
+    strategy : PseudoBinaryStrategy
+        A completed mapping strategy.
+    x : v.StateVariable, optional
+        Variable for the x-axis.  Defaults to the primary composition variable
+        (e.g. ``v.X('Ca')``).
+    y : v.StateVariable, optional
+        Variable for the y-axis.  Defaults to temperature.
+    ax : matplotlib Axes, optional
+        Axes to plot on; a new figure is created if not given.
+    tielines : int or False, optional
+        Plot every *n*-th tieline.  ``False`` disables tielines.
+    label_nodes : bool, optional
+        Annotate three-phase nodes with scatter points.
+    legend_generator : callable, optional
+        Phase-legend factory.
+    tieline_color : color, optional
+    tie_triangle_color : color, optional
+    z_axis : bool, optional
+        If ``True`` (default) a secondary x-axis showing *z* ∈ [0, 1] is
+        added above the plot.
+    z_label : str, optional
+        Label for the secondary z-axis.  Defaults to an auto-generated string
+        that lists the endpoint compositions.
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The primary (bottom) Axes of the phase diagram.
+    """
+    ax = plot_binary(
+        strategy, x=x, y=y, ax=ax,
+        tielines=tielines, label_nodes=label_nodes,
+        legend_generator=legend_generator,
+        tieline_color=tieline_color,
+        tie_triangle_color=tie_triangle_color,
+        *args, **kwargs,
+    )
+
+    if z_axis:
+        xlim = ax.get_xlim()
+        z_lo = strategy.x_primary_to_z(xlim[0])
+        z_hi = strategy.x_primary_to_z(xlim[1])
+
+        ax_top = ax.twiny()
+        ax_top.set_xlim(z_lo, z_hi)
+
+        if z_label is None:
+            start_str = ', '.join(
+                f'X({el.capitalize()})={v_:.3g}'
+                for el, v_ in sorted(strategy.comp_start.items())
+                if el not in ('VA', 'O')
+            )
+            end_str = ', '.join(
+                f'X({el.capitalize()})={v_:.3g}'
+                for el, v_ in sorted(strategy.comp_end.items())
+                if el not in ('VA', 'O')
+            )
+            z_label = f'z  (0: {start_str}  \u2192  1: {end_str})'
+        ax_top.set_xlabel(z_label)
 
     return ax
